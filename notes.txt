@@ -1,0 +1,96 @@
+Согласно заданию и рекомендациям в репозитории приложенияописанию на GitHub мной были выполнены следующие действия:
+
+git clone https://github.com/anfederico/flaskex.git
+cd flaskex
+pip3 install -r requirements.txt
+python3 app.py
+
+Приложение не запускается и выбрасывает исключение. Изучив вывод в консоле, можно увидеть
+следующее:
+
+...
+AttributeError: module 'wtforms.validators' has no attribute 'required'
+
+Причина ошибки в том, что в файле /flaskex/scripts/forms.py в модуле validators библиотеки wtforms 
+отсутствует вызываемая функция required(). Что бы это исправить нужно удалить required() и вызвать
+InputRequired() (DataRequired()).
+
+Вот так долже выглядит код в forms.py:
+
+# -*- coding: utf-8 -*-
+
+from wtforms import Form, StringField, validators
+
+
+class LoginForm(Form):
+    username = StringField('Username:', validators=[validators.InputRequired(), validators.Length(min=1, max=30)])
+    password = StringField('Password:', validators=[validators.InputRequired(), validators.Length(min=1, max=30)])
+    email = StringField('Email:', validators=[validators.optional(), validators.Length(min=0, max=50)])
+
+Теперь если вновь запустить приложение:
+python3 app.py
+python3 -m flask run --host=0.0.0.0
+
+Перейдем http://127.0.0.1:5000 - увидим работающее веб-приложение
+Можно пройти регистрацию. Данные для этого сохраняются в базу данных (СУБД  SQLite). Затем по выходе из приложения можно зайти пройдя аутентификацию.
+------------------------------------------------------------------------------
+
+Создадим в директории /flaskex файл Dockerfile со следующими содержимым:
+
+# syntax=docker/dockerfile:1
+
+FROM python:3.6-slim-buster
+WORKDIR /flaskex
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+COPY . .
+CMD [ "python3", "-m", "flask", "run","--host=0.0.0.0"]
+
+Данная команда создаст образ по инструкциям из файла:
+docker build -t flask-app .
+docker images
+
+Запускаем на основе образа контейнер с работающим приложением:
+docker run -dp 5000:5000 flask-app
+docker ps
+
+Так же переходим по адресу http://127.0.0.1:5000
+
+docker rm -f container_id (or name)
+docker rmi -f image_id (or name)
+-----------------------------------------------------------------------------
+
+Создадим файл в директории /flaskex под названием docker-compose.yml
+со следующим содержимым:
+
+services:
+  app:
+    image: python:3.6-slim-buster
+    working_dir: /flaskex
+    command: bash -c "pip3 install -r requirements.txt && python3 app.py"
+    volumes: 
+      - .:/flaskex
+    ports:
+      - 5000:5000
+
+
+Запускаем контейнер(ы)
+docker compose up -d
+docker compose ps
+
+Останавливаем контейнер(ы)
+docker compose down
+----------------------------------------------------------------------------
+----------------------------------------------------------------------------
+Дополнения
+
+Другой вариан файла docker-compose.yml
+
+services:
+	app:
+		build: ‘.’
+		ports:
+      - ‘5000:5000’
+
+Данные инструкции запускают Dockerfile. В то время как предыдущий docker-compose.yml независемый.
+
