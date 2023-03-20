@@ -1,0 +1,9 @@
+services:
+  app:
+    image: python:3.6-slim-buster
+    working_dir: /flaskex
+    command: bash -c "pip3 install -r requirements.txt && python3 app.py"
+    volumes: 
+      - .:/flaskex
+    ports:
+      - 5000:5000
